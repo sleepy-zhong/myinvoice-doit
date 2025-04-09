@@ -6,6 +6,8 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.springframework.beans.factory.annotation.Value;
+import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 
 import java.text.ParseException;
@@ -17,61 +19,36 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // 定义JWT签名所使用的密钥，应保持安全性
-    private static final String SECRET = "your-secret-key";  // 可以替换为更强的密钥
+    // 通过@Value注入配置值
+    @Value("${jwt.secret}")
+    private String secret;  // 移除static final
 
-    /**
-     * 生成JWT Token
-     *
-     * @param user 用户实体，包含用户名和角色信息
-     * @return 生成的JWT Token字符串
-     * @throws JOSEException 如果在签名过程中发生错误
-     */
+    @Value("${jwt.expiration}")
+    private long expiration;
+
     public String createToken(User user) throws JOSEException {
-        // 创建JWT Claim，包含用户信息和Token过期时间
+        // 添加长度校验（防御性编程）
+        if (secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException("密钥必须≥32字节");
+        }
+
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getUsername())  // 将用户名存入subject
-                .issuer("your-application")
-                .expirationTime(new Date(System.currentTimeMillis() + 3600 * 1000))  // Token 1小时过期
-                .claim("role", user.getRole())  // 记录角色信息
+                .subject(user.getUsername())
+                .expirationTime(new Date(System.currentTimeMillis() + expiration * 1000))
+                .claim("role", user.getRole())
                 .build();
 
-        // 创建JWT头，指定签名算法
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
-
-        // 创建带签名的JWT实例
-        SignedJWT signedJWT = new SignedJWT(header, claimsSet);
-
-        // 创建签名器，使用指定的密钥
-        MACSigner signer = new MACSigner(SECRET);
-
-        // 对JWT进行签名
-        signedJWT.sign(signer);
-
-        // 返回序列化后的JWT Token字符串
+        SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet);
+        signedJWT.sign(new MACSigner(secret));  // 使用注入的密钥
         return signedJWT.serialize();
     }
 
-    /**
-     * 解析JWT Token
-     *
-     * @param token JWT Token字符串
-     * @return 解析出的用户名
-     * @throws ParseException 如果解析JWT时发生错误
-     * @throws JOSEException 如果验证JWT签名失败
-     */
     public String parseToken(String token) throws ParseException, JOSEException {
-        // 解析JWT Token
         SignedJWT signedJWT = SignedJWT.parse(token);
-        // 创建验证器，使用指定的密钥
-        JWSVerifier verifier = new MACVerifier(SECRET);
-
-        // 验证JWT签名，如果验证成功则返回用户名，否则抛出异常
-        if (signedJWT.verify(verifier)) {
-            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
-            return claimsSet.getSubject();  // 返回用户名
-        } else {
+        if (!signedJWT.verify(new MACVerifier(secret))) {  // 使用注入的密钥
             throw new JOSEException("Invalid JWT signature");
         }
+        return signedJWT.getJWTClaimsSet().getSubject();
     }
 }
+
