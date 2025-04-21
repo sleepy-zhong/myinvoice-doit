@@ -3,7 +3,10 @@
 package com.example.myinvoice.server.OCR;
 
 import com.example.myinvoice.Entity.*;
-        import com.example.myinvoice.enums.InvoiceType;
+import com.example.myinvoice.Entity.DTO.InvoiceResponse;
+import com.example.myinvoice.exception.BusinessException;
+import com.example.myinvoice.exception.enums.ErrorCodeEnum;
+import com.example.myinvoice.exception.enums.InvoiceType;
 import com.example.myinvoice.exception.UnknownInvoiceTypeException;
 import com.example.myinvoice.mapper.*;
         import com.example.myinvoice.util.OcrFieldExtractor;
@@ -30,16 +33,11 @@ public class OCRSaveService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public void processOcrData(String ocrJson, Long userId) throws Exception {
+    public Object processOcrData(String ocrJson, Long userId, String imageUrl) throws Exception {
         JsonNode rootNode = objectMapper.readTree(ocrJson);
-//        System.out.println("打印出rootNode的内如如下————————————————————————————————");
-//        System.out.println(rootNode);
         JsonNode subMsgs = rootNode.get("subMsgs");
-//        System.out.println("打印出submsgs的内如如下————————————————————————————————");
-//        System.out.println(subMsgs);
-
         if (subMsgs.isEmpty()) {
-            throw new IllegalArgumentException("OCR数据缺少subMsgs");
+            throw new BusinessException(ErrorCodeEnum.OCR_DATA_INVALID, "缺少subMsgs数据");
         }
 
         JsonNode firstMsg = subMsgs.get(0);
@@ -53,24 +51,48 @@ public class OCRSaveService {
 
         // 保存总表
         Ticket ticket = buildTicket(ocrJson, userId, typeName);
+        ticket.setImageUrl(imageUrl);
         ticketMapper.insert(ticket);
         System.out.println(ticket.getId());
         System.out.println(dataNode);
-        // 保存分表
+//        String hash = generateHash(ocrJson);
+
+//        // 保存分表
+//        switch (type) {
+//            case VAT_INVOICE ->
+//                    invoicesMapper.insert(OcrFieldExtractor.extractVatInvoice(dataNode, ticket.getId()));
+//            case TRAIN_TICKET ->
+//                    trainTicketMapper.insert(OcrFieldExtractor.extractTrainTicket(dataNode, ticket.getId()));
+//            case AIR_ITINERARY ->
+//                    airItineraryMapper.insert(OcrFieldExtractor.extractAirItinerary(dataNode, ticket.getId()));
+//            default ->
+//                    throw new BusinessException(ErrorCodeEnum.INVOICE_TYPE_UNSUPPORTED);
+//        }
         switch (type) {
-            case VAT_INVOICE:
-                invoicesMapper.insert(OcrFieldExtractor.extractVatInvoice(dataNode, ticket.getId()));
-//                System.out.println(OcrFieldExtractor.extractVatInvoice(dataNode, ticket.getId()));
-                break;
-            case TRAIN_TICKET:
-                trainTicketMapper.insert(OcrFieldExtractor.extractTrainTicket(dataNode, ticket.getId()));
-                break;
-            case AIR_ITINERARY:
-                airItineraryMapper.insert(OcrFieldExtractor.extractAirItinerary(dataNode, ticket.getId()));
-                break;
-            default:
-                throw new UnknownInvoiceTypeException(typeName);
+            case VAT_INVOICE -> {
+                // 使用代码块包裹多行操作
+                Invoices invoice = OcrFieldExtractor.extractVatInvoice(dataNode, ticket.getId());
+                invoicesMapper.insert(invoice);
+                // 添加调试日志
+                log.info("原始数据节点: {}", dataNode.toPrettyString());
+                InvoiceResponse response = OcrFieldExtractor.extractVatInvoiceResponse(dataNode);
+                log.info("构建的响应对象: {}", response);
+
+                return response;
+            }
+            case TRAIN_TICKET -> {
+                TrainTicket tickets = OcrFieldExtractor.extractTrainTicket(dataNode, ticket.getId());
+                trainTicketMapper.insert(tickets);
+                return Map.of("type", "train_ticket");
+            }
+            case AIR_ITINERARY -> {
+                AirItinerary itinerary = OcrFieldExtractor.extractAirItinerary(dataNode, ticket.getId());
+                airItineraryMapper.insert(itinerary);
+                return Map.of("type", "air_itinerary");
+            }
+            default -> throw new BusinessException(ErrorCodeEnum.INVOICE_TYPE_UNSUPPORTED);
         }
+
     }
 
     private Ticket buildTicket(String ocrJson, Long userId, String type) throws Exception {

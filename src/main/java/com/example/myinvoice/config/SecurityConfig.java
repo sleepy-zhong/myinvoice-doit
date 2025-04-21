@@ -1,37 +1,64 @@
-//package com.example.myinvoice.config;
-//
-//import org.springframework.context.annotation.Bean;
-//import org.springframework.context.annotation.Configuration;
-//import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-//import org.springframework.security.web.SecurityFilterChain;
-//
-//import static org.springframework.security.config.Customizer.withDefaults;
-//
-//@Configuration
-//public class SecurityConfig {
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        // 配置哪些请求可以不经过身份认证
-//        http
-//                .authorizeHttpRequests(authz -> authz
-//                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // 允许公开访问 Swagger UI 和 API 文档
-//                        .anyRequest().authenticated() // 其他请求需要身份认证
-//                )
-//                .formLogin(withDefaults()) // 使用默认的表单登录
-//                .logout(withDefaults()); // 使用默认的注销配置
-//
-//        return http.build(); // 返回配置完成的 SecurityFilterChain
-//    }
-//}
 package com.example.myinvoice.config;
 
+
+//import com.example.myinvoice.util.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+//@Configuration
+//public class SecurityConfig {
+//
+//    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+//    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+//        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+//    }
+//
+//    @Bean
+//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+//        http
+//                // 禁用 CSRF（前后端分离项目建议关闭）
+//                .csrf(csrf -> csrf.disable())
+//
+//
+//                // 配置请求授权规则
+//                .authorizeHttpRequests(authz -> authz
+//                         //公开访问路径
+//                        .requestMatchers(
+//                                "/api/auth/login",
+//                                "/swagger-ui/**",
+//                                "/v3/api-docs/**",
+//                                "/v2/api-docs",
+//                                "/swagger-resources/**",
+//                                "/webjars/**",
+//                                "/doc.html","/webjars/**", "/swagger-resources", "/swagger-resources/**", "/v3/**", "/favicon.ico", "Mozilla/**"
+//                                ,"/api/**"
+//                        ).permitAll()
+//                        // 其他请求需要认证
+//                        .anyRequest().authenticated()
+//                )
+//
+//                // 添加 JWT 过滤器
+//                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+//
+//                // 设置无状态会话（JWT 不需要 Session）
+//                .sessionManagement(session -> session
+//                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+//                );
+//
+//        return http.build();
+//    }
+//
+//    @Bean
+//    public PasswordEncoder passwordEncoder() {
+//        return new BCryptPasswordEncoder();
+//    }
+//}
 @Configuration
 public class SecurityConfig {
     @Bean

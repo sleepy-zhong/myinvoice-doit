@@ -72,7 +72,7 @@ public class test {
 
     @Test
     public void testSelectAllLogs() {
-        List<TicketReviewLog> logs = ticketReviewLogService.list();
+        List<TicketOperationLog> logs = ticketReviewLogService.list();
         System.out.println("logs: " + logs.get(0).getTicketId());
 
     }

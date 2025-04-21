@@ -9,16 +9,16 @@ import lombok.Data;
 import java.sql.Date;
 
 @Data
-@TableName("ticket_review_log")
-public class TicketReviewLog {
+@TableName("ticket_operation_log")
+public class TicketOperationLog {
     @TableId(type = IdType.AUTO)
     private Long id;
     @TableField("ticket_id")
     private Long ticketId;
-    @TableField("reviewer_id")
-    private Long reviewerId;
-    @TableField("review_time")
-    private Date reviewTime;
-    private String result;  // "通过" 或 "不通过"
+    @TableField("operation_id")
+    private Long operationId;
+    @TableField("operation_time")
+    private Date operationTime;
+    private String operation;  // "通过" 或 "不通过"
     private String reason;
 }

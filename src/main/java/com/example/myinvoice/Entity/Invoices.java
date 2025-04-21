@@ -49,7 +49,35 @@ public class Invoices {
 
     public Map<String, Object> data_findbyuserid() {
         Map<String, Object> data = new HashMap<>();
-        data.put("invoiceDetails", invoiceDetails); // 将 invoiceDetails 数据放入 Map
+        data.put("invoiceCode", invoiceCode); // 将 invoiceDetails 数据放入 Map//发票代码
+        data.put("invoiceNumber", invoiceNumber);//发票号码
+        data.put("invoiceDate", invoiceDate);//开票日期
+        data.put("purchaserTaxNumber", purchaserTaxNumber);//购买方纳税人识别号
+        data.put("purchaserName", purchaserName);//购买方名称
+        data.put("sellerName", sellerName);//销售方名称
+        data.put("sellerTaxNumber", sellerTaxNumber);//销售方纳税人识别号
+        data.put("totalAmount", totalAmount);//合计金额
+        data.put("invoiceTax", invoiceTax);//税额
+
+
+
+        // 继续添加其他字段
+        return data;
+    }
+    public Map<String, Object> data_findbyfinance() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("invoiceCode", invoiceCode); // 将 invoiceDetails 数据放入 Map//发票代码
+        data.put("invoiceNumber", invoiceNumber);//发票号码
+        data.put("invoiceDate", invoiceDate);//开票日期
+        data.put("purchaserTaxNumber", purchaserTaxNumber);//购买方纳税人识别号
+        data.put("purchaserName", purchaserName);//购买方名称
+        data.put("sellerName", sellerName);//销售方名称
+        data.put("sellerTaxNumber", sellerTaxNumber);//销售方纳税人识别号
+        data.put("totalAmount", totalAmount);//合计金额
+        data.put("invoiceTax", invoiceTax);//税额
+
+
+
         // 继续添加其他字段
         return data;
     }

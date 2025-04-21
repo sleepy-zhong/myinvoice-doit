@@ -1,5 +1,5 @@
 // InvoiceType.java
-package com.example.myinvoice.enums;
+package com.example.myinvoice.exception.enums;
 
 import com.example.myinvoice.Entity.*;
 

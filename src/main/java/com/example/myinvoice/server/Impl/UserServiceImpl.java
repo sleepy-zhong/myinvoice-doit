@@ -3,10 +3,14 @@ package com.example.myinvoice.server.Impl;
 import com.aliyun.credentials.utils.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.myinvoice.Entity.DTO.AdminUpdateUserRequest;
 import com.example.myinvoice.Entity.DTO.RegisterRequest;
-import com.example.myinvoice.Entity.DTO.UpdateProfileRequest;
+import com.example.myinvoice.Entity.DTO.UpdateUserRequest;
+import com.example.myinvoice.Entity.DTO.UserResponse;
 import com.example.myinvoice.Entity.Ticket;
 import com.example.myinvoice.Entity.User;
+import com.example.myinvoice.exception.BusinessException;
+import com.example.myinvoice.exception.enums.ErrorCodeEnum;
 import com.example.myinvoice.mapper.TicketMapper;
 import com.example.myinvoice.mapper.UserMapper;
 import com.example.myinvoice.server.Invoice.UserService;
@@ -30,6 +34,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private DepartmentMappingConfig departmentMappingConfig;
+    @Autowired
 
     private PasswordEncoder passwordEncoder;  // 注入PasswordEncoder
 
@@ -37,7 +42,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Autowired
     private TicketMapper ticketMapper;
 
+    @Override
+    public UserResponse getUserById(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ErrorCodeEnum.USER_NOT_EXIST);
+        }
 
+        // 实体转DTO
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .employeeId(user.getEmployeeId())
+                .department(user.getDepartment())
+                .role(user.getRole())
+                .phone(user.getPhone())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
     public String generateEmployeeId(String departmentName) {
         try {
             // 1. 获取当前年份
@@ -52,7 +74,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
             if ("00".equals(deptCode)) {
                 // 如果部门名称不在映射表中，抛出自定义异常或记录日志
-                throw new IllegalArgumentException("未知的部门名称: " + departmentName);
+                throw new BusinessException(ErrorCodeEnum.DEPARTMENT_CODE_NOT_FOUND,
+                        "无效部门名称: " + departmentName);
             }
 
             // 3. 拼接前缀
@@ -97,7 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             );
             if (existingUserByPhone != null) {
                 System.err.println("手机号已存在: " + request.getPhone()); // 添加日志
-                throw new RuntimeException("该手机号已注册，请直接登录");
+                throw new BusinessException(ErrorCodeEnum.PHONE_ALREADY_USED);
             }
 
             // 2. 自动生成工号
@@ -123,11 +146,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         } catch (DuplicateKeyException e) {
             // 处理唯一键冲突
             System.err.println("用户名已存在: " + request.getUsername());
-            throw new RuntimeException("该用户名已存在，请选择其他用户名", e);
+            throw new BusinessException(ErrorCodeEnum.USERNAME_ALREADY_EXISTS);
         } catch (Exception e) {
             // 其他异常处理
             System.err.println("注册用户时发生错误: " + e.getMessage());
-            throw new RuntimeException("注册用户失败", e);
+            throw new BusinessException(ErrorCodeEnum.USER_ALREADY_EXISTS);
         }
     }
 
@@ -156,34 +179,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
     }
 
-    @Override
-    public boolean updateProfile(String username, UpdateProfileRequest request) {
-        // 查找用户
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("username", username);
-        User user = userMapper.selectOne(queryWrapper);
-        if (user == null) return false;
-
-        // 手机号是否已存在，排除自己
-        QueryWrapper<User> phoneCheckWrapper = new QueryWrapper<>();
-        phoneCheckWrapper.eq("phone", request.getPhone()).ne("id", user.getId());
-        User existingUser = userMapper.selectOne(phoneCheckWrapper);
-        if (existingUser != null) {
-            return false; // 手机号已存在
-        }
-
-        // 更新手机号和密码
-        if (!StringUtils.isEmpty(request.getPhone())) {
-            user.setPhone(request.getPhone());
-        }
-        if (!StringUtils.isEmpty(request.getPassword())) {
-            user.setPassword(passwordEncoder.encode(request.getPassword())); // 密码加密
-        }
-
-        // 更新数据库
-        userMapper.updateById(user);
-        return true;
-    }
 
     @Override
     public boolean AdmindeleteUserByEmployeeId(String employeeId) {
@@ -216,6 +211,85 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
 
+    // 普通用户更新方法（只能修改自己的用户名、密码、手机号）
+    @Override
+    public boolean updateUserInfo(Long id, UpdateUserRequest request) {
+        // 1. 用户是否存在
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ErrorCodeEnum.USER_NOT_EXIST); // 用户不存在
+        }
 
+        // 2. 手机号唯一性校验
+        if (!StringUtils.isEmpty(request.getPhone())) {
+            QueryWrapper<User> phoneCheck = new QueryWrapper<>();
+            phoneCheck.eq("phone", request.getPhone())
+                    .ne("id", id); // 排除自己
+            if (userMapper.exists(phoneCheck)) {
+                throw new BusinessException(ErrorCodeEnum.PHONE_ALREADY_USED); // 手机号重复
+            }
+        }
+
+        // 3. 更新字段（空的不更新）
+        if (!StringUtils.isEmpty(request.getUsername())) {
+            user.setUsername(request.getUsername());
+        }
+        if (!StringUtils.isEmpty(request.getPassword())) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+        if (!StringUtils.isEmpty(request.getPhone())) {
+            user.setPhone(request.getPhone());
+        }
+
+        // 4. 数据库更新
+        boolean success = userMapper.updateById(user) > 0;
+        if (!success) {
+            throw new BusinessException(ErrorCodeEnum.UPDATE_FAILED); // 数据库更新失败
+        }
+
+        return true;
+    }
+
+    // 管理员更新方法（可修改所有字段）
+    @Override
+    public boolean adminUpdateUser(AdminUpdateUserRequest request) {
+        User user = userMapper.selectById(request.getId());
+        if (user == null) return false;
+
+        // 用户名唯一性校验
+        if (!StringUtils.isEmpty(request.getUsername())) {
+            QueryWrapper<User> nameCheck = new QueryWrapper<>();
+            nameCheck.eq("username", request.getUsername())
+                    .ne("id", user.getId());
+            if (userMapper.exists(nameCheck)) {
+                return false;
+            }
+        }
+
+        // 手机号唯一性校验
+        if (!StringUtils.isEmpty(request.getPhone())) {
+            QueryWrapper<User> phoneCheck = new QueryWrapper<>();
+            phoneCheck.eq("phone", request.getPhone())
+                    .ne("id", user.getId());
+            if (userMapper.exists(phoneCheck)) {
+                return false;
+            }
+        }
+
+        // 更新所有允许字段
+        user.setUsername(StringUtils.isEmpty(request.getUsername()) ?
+                user.getUsername() : request.getUsername());
+        user.setPassword(StringUtils.isEmpty(request.getPassword()) ?
+                user.getPassword() : passwordEncoder.encode(request.getPassword()));
+        user.setPhone(StringUtils.isEmpty(request.getPhone()) ?
+                user.getPhone() : request.getPhone());
+        user.setDepartment(StringUtils.isEmpty(request.getDepartment()) ?
+                user.getDepartment() : request.getDepartment());
+        user.setRole(request.getRole() == null ?
+                user.getRole() : request.getRole());
+
+
+        return userMapper.updateById(user) > 0;
+    }
 
 }

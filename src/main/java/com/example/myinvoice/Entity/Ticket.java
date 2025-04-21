@@ -47,4 +47,20 @@ public class Ticket {
         // 继续添加其他字段
         return data;
     }
+    public Map<String, Object> data_findbyfinance() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("TicketId", id); // 将 flights 数据放入 Map
+        data.put("userid", userId);
+        data.put("type", type);
+//        data.put("ocrjson", ocrJson);
+
+        data.put("imageurl", imageUrl);
+        data.put("createdat", createdAt);
+        data.put("updatedAt", updatedAt);
+        data.put("approvalStatus", approvalStatus);
+
+
+        // 继续添加其他字段
+        return data;
+    }
 }

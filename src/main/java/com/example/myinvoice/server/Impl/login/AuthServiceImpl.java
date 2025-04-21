@@ -1,5 +1,8 @@
 package com.example.myinvoice.server.Impl.login;
 
+import com.example.myinvoice.exception.BusinessException;
+import com.example.myinvoice.exception.enums.ErrorCodeEnum;
+import com.nimbusds.jose.JOSEException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.myinvoice.Entity.DTO.LoginRequest;
@@ -28,12 +31,12 @@ public class AuthServiceImpl implements AuthService {
         );
 
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(ErrorCodeEnum.USER_NOT_FOUND);
         }
 
         // 验证密码（使用 BCrypt）
         if (!new BCryptPasswordEncoder().matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("密码错误");
+            throw new BusinessException(ErrorCodeEnum.LOGIN_FAILED);
         }
 
         // 登录成功生成 Token
@@ -41,9 +44,10 @@ public class AuthServiceImpl implements AuthService {
         try {
             token = jwtUtil.createToken(user);  // 调用 createToken 方法生成 token
         } catch (Exception e) {
-            throw new RuntimeException("生成 Token 失败", e);
+            throw new BusinessException(ErrorCodeEnum.SYSTEM_ERROR, "Token生成失败");
         }
 
-        return new LoginResponse(token, user.getRole());
+        return new LoginResponse(token, user.getRole(), user.getEmployeeId(), user.getUsername(), user.getDepartment()
+                , user.getPhone(), user.getId());
     }
 }

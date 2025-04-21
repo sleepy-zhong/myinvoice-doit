@@ -1,6 +1,6 @@
 package com.example.myinvoice.server.Invoice;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.myinvoice.Entity.TicketReviewLog;
+import com.example.myinvoice.Entity.TicketOperationLog;
 
-public interface TicketReviewLogService extends IService<TicketReviewLog> {}
+public interface TicketReviewLogService extends IService<TicketOperationLog> {}

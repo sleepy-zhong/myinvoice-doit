@@ -3,6 +3,8 @@ package com.example.myinvoice.server.OCR;
 import com.aliyun.ocr_api20210707.models.RecognizeMixedInvoicesRequest;
 import com.aliyun.ocr_api20210707.models.RecognizeMixedInvoicesResponse;
 import com.aliyun.teautil.models.RuntimeOptions;
+import com.example.myinvoice.exception.BusinessException;
+import com.example.myinvoice.exception.enums.ErrorCodeEnum;
 import com.example.myinvoice.util.AliClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,7 +14,7 @@ import java.io.InputStream;
 @Service
 public class AliOcrService {
 
-    //原始输出，未将阿里云接口返回的数据转换为对象的方法
+    //原始输出，未将接口返回的数据转换为对象的方法
     public String processInvoiceRaw(MultipartFile file) throws Exception {
         com.aliyun.ocr_api20210707.Client client = AliClient.createClient();
         InputStream bodyStream = file.getInputStream();
@@ -27,7 +29,8 @@ public class AliOcrService {
             // 直接返回原始JSON字符串
             return response.getBody().getData();
         }
-        throw new Exception("OCR识别失败，状态码：" + response.getStatusCode());
+        throw new BusinessException(ErrorCodeEnum.OCR_RECOGNITION_FAILED);
+
     }
 
 //    private AliOcrResponse parseResponse(String jsonResponse) throws Exception {
